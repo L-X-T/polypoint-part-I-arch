@@ -3,15 +3,15 @@
 This lab shows how to use Webpack Module Federation together with the Angular CLI and the `@angular-architects/module-federation` plugin. The goal is to make a shell capable of **loading a separately compiled and deployed microfrontend**.
 
 - [Micro Frontends with Webpack Module Federation and Angular](#micro-frontends-with-webpack-module-federation-and-angular)
-	- [Activate and Configure Module Federation](#activate-and-configure-module-federation)
-		- [Flight-App as shell and Passenger Micro Frontend](#flight-app-as-shell-and-passenger-micro-frontend)
-		- [Activate and configure Module Federation](#activate-and-configure-module-federation)
-	- [Try it out](#try-it-out)
-	- [Bonus: Switch to Dynamic Federation \*](#bonus-switch-to-dynamic-federation-)
-	- [Bonus: Share a Library of your Monorepo \*](#bonus-share-a-library-of-your-monorepo-)
-	- [Module Federation and Web Components (Multiple Versions and Frameworks)](#module-federation-and-web-components-multiple-versions-and-frameworks)
-		- [Inspect the Web-Component-based Micro Frontends](#inspect-the-web-component-based-micro-frontends)
-	- [Bonus: More Details on Module Federation \*\*](#bonus-more-details-on-module-federation-)
+  - [Activate and Configure Module Federation](#activate-and-configure-module-federation)
+    - [Flight-App as shell and Passenger Micro Frontend](#flight-app-as-shell-and-passenger-micro-frontend)
+    - [Activate and configure Module Federation](#activate-and-configure-module-federation)
+  - [Try it out](#try-it-out)
+  - [Bonus: Switch to Dynamic Federation \*](#bonus-switch-to-dynamic-federation-)
+  - [Bonus: Share a Library of your Monorepo \*](#bonus-share-a-library-of-your-monorepo-)
+  - [Module Federation and Web Components (Multiple Versions and Frameworks)](#module-federation-and-web-components-multiple-versions-and-frameworks)
+    - [Inspect the Web-Component-based Micro Frontends](#inspect-the-web-component-based-micro-frontends)
+  - [Bonus: More Details on Module Federation \*\*](#bonus-more-details-on-module-federation-)
 
 ## Activate and Configure Module Federation
 
@@ -39,24 +39,22 @@ Now, let's activate and configure module federation for the shell (`flight-app`)
 
 2. In the project `passenger`, open the generated configuration file `apps/passenger/webpack.config.js`. Adjust it as follows:
 
-    ```javascript
-    const { shareAll, withModuleFederationPlugin } = require('@angular-architects/module-federation/webpack');
+   ```javascript
+   const { shareAll, withModuleFederationPlugin } = require('@angular-architects/module-federation/webpack');
 
-    module.exports = withModuleFederationPlugin({
+   module.exports = withModuleFederationPlugin({
+     name: 'passenger',
 
-      name: 'passenger',
+     exposes: {
+       // Adjust this line:
+       './module': './apps/passenger/src/app/passenger/passenger.module.ts'
+     },
 
-      exposes: {
-        // Adjust this line:
-        './module': './apps/passenger/src/app/passenger/passenger.module.ts',
-      },
-
-      shared: {
-        ...shareAll({ singleton: true, strictVersion: true, requiredVersion: 'auto' }),
-      },
-
-    });
-    ```
+     shared: {
+       ...shareAll({ singleton: true, strictVersion: true, requiredVersion: 'auto' })
+     }
+   });
+   ```
 
    This exposes the `PassengerModule` under the Name `./module`. Hence, the shell can use this path to load it.
 
@@ -68,19 +66,17 @@ Now, let's activate and configure module federation for the shell (`flight-app`)
 
 4. In the `flight-app` project, open the file `apps/flight-app/webpack.config.js`. Adjust it as follows:
 
-    ```javascript
-    const { shareAll, withModuleFederationPlugin } = require('@angular-architects/module-federation/webpack');
+   ```javascript
+   const { shareAll, withModuleFederationPlugin } = require('@angular-architects/module-federation/webpack');
 
-    module.exports = withModuleFederationPlugin({
+   module.exports = withModuleFederationPlugin({
+     remotes: {
+       passenger: 'http://localhost:4201/remoteEntry.js'
+     },
 
-      remotes: {
-        "passenger": "http://localhost:4201/remoteEntry.js",    
-      },
-
-      shared: {
-        ...shareAll({ singleton: true, strictVersion: true, requiredVersion: 'auto' }),
-      },
-
+     shared: {
+       ...shareAll({ singleton: true, strictVersion: true, requiredVersion: 'auto' })
+     }
    });
    ```
 
@@ -91,15 +87,14 @@ Now, let's activate and configure module federation for the shell (`flight-app`)
    ```javascript
    // Add this route:
    {
-       path: 'mf-passenger',
-       loadChildren: () => import('passenger/module')
-           .then(esm => esm.PassengerModule)
+     path: 'mf-passenger',
+     loadChildren: () => import('passenger/module').then(esm => esm.PassengerModule)
    },
 
    // This route ALWAYS needs to be the last one:
    {
-       path: '**',
-       redirectTo: 'home'
+     path: '**',
+     redirectTo: 'home'
    }
    ```
 
@@ -109,7 +104,7 @@ Now, let's activate and configure module federation for the shell (`flight-app`)
 
    ```javascript
    declare module 'passenger/module' {
-       export const PassengerModule: Type<unknown>;
+     export const PassengerModule: Type<unknown>;
    };
    ```
 
@@ -149,10 +144,10 @@ Now, let's remove the need for registering the micro frontends upfront with shel
 
 1. Switch to your `flight-app` shell and open the file `webpack.config.js`. Here, remove the registered remotes:
 
-   ```javascript
+   ```typescript
    remotes: {
-       // Remove this line or comment it out:
-       // 'passenger': "passenger@http://localhost:4201/remoteEntry.js",
+     // Remove this line or comment it out:
+     // 'passenger': "passenger@http://localhost:4201/remoteEntry.js",
    },
    ```
 
@@ -164,23 +159,23 @@ Now, let's remove the need for registering the micro frontends upfront with shel
 
    [...]
    const routes: Routes = [
-       [...]
-       // Update this route:
-       {
-           path: 'mf-passenger',
-           loadChildren: () =>
-               loadRemoteModule({
-                   type: 'module',
-                   remoteEntry: 'http://localhost:4201/remoteEntry.js',
-                   exposedModule: './module'
-               })
-               .then(esm => esm.PassengerModule)
+     [...]
+     // Update this route:
+     {
+       path: 'mf-passenger',
+       loadChildren: () =>
+         loadRemoteModule({
+           type: 'module',
+           remoteEntry: 'http://localhost:4201/remoteEntry.js',
+           exposedModule: './module'
+         })
+         .then(esm => esm.PassengerModule)
        },
        [...]
        // This route ALWAYS needs to be the last one:
        {
-           path: '**',
-           redirectTo: 'home'
+         path: '**',
+         redirectTo: 'home'
        }
    ]
    ```
@@ -220,7 +215,6 @@ This was quite easy, wasn't it? However, we can improve this solution a bit. Ide
    "tags": ["domain:shared", "type:util"]
    ```
 
-
 3. As most IDEs only read global configuration files like the `tsconfig.base.json` once, restart your IDE (alternatively, your IDE might also provide an option for reloading these settings, e. g. by restarting the TypeScript Language Server).
 
 4. Switch to your `auth-lib` project. In it's folder `auth-lib\src\lib`, create a file `auth-lib.service.ts` with the following service:
@@ -229,7 +223,7 @@ This was quite easy, wasn't it? However, we can improve this solution a bit. Ide
    import { Injectable } from '@angular/core';
 
    @Injectable({
-     providedIn: 'root',
+     providedIn: 'root'
    })
    export class AuthLibService {
      private userName: string | null = null;
@@ -239,7 +233,7 @@ This was quite easy, wasn't it? However, we can improve this solution a bit. Ide
      }
 
      public login(userName: string, password: string): void {
-       // Authentication for **honest** users TM. (c) Manfred Steyer
+       // Authentication for **honest** users
        this.userName = userName;
      }
    }
@@ -260,14 +254,14 @@ This was quite easy, wasn't it? However, we can improve this solution a bit. Ide
    import { AuthLibService } from '@flight-workspace/shared/auth-lib';
 
    @Component({
-     selector: 'flight-app',
-     templateUrl: './app.component.html',
+     selector: 'app-flight-app',
+     templateUrl: './app.component.html'
    })
    export class AppComponent {
      title = 'shell';
 
      constructor(private authService: AuthLibService) {
-       this.authService.login('Max', '');
+       this.authService.login('Alex', '');
      }
    }
    ```
@@ -276,7 +270,6 @@ This was quite easy, wasn't it? However, we can improve this solution a bit. Ide
 
    ```typescript
    export class SearchComponent {
-
        [...]
 
        user = this.authService.user;
@@ -289,12 +282,12 @@ This was quite easy, wasn't it? However, we can improve this solution a bit. Ide
 
 8. Open this component's template (`search.component.html`) and data bind the property `user`:
 
-    ```html
-    <div class="content">
-      <div>User: {{user}}</div>
-      [...]
-    </div>
-    ```
+   ```html
+   <div class="content">
+     <div>User: {{ user }}</div>
+     [...]
+   </div>
+   ```
 
 9. Restart both, the `flight-app` and the micro frontend (`passenger`).
 
@@ -319,50 +312,49 @@ In this section, we load web components via module federation. This allows us, t
    import { startsWith, WebComponentWrapper, WebComponentWrapperOptions } from '@angular-architects/module-federation-tools';
 
    export const APP_ROUTES: Routes = [
+     [...]
 
-       [...]
+     // Add this route:
+     {
+       path: 'angular2',
+       component: WebComponentWrapper,
+       data: {
+         remoteEntry: 'https://gray-pond-030798810.azurestaticapps.net//remoteEntry.js',
+         remoteName: 'angular2',
+         exposedModule: './web-components',
+         elementName: 'angular2-element'
+       } as WebComponentWrapperOptions
+     },
 
-       // Add this route:
-       {
-           path: 'angular2',
-           component: WebComponentWrapper,
-           data: {
-               remoteEntry: 'https://gray-pond-030798810.azurestaticapps.net//remoteEntry.js',
-               remoteName: 'angular2',
-               exposedModule: './web-components',
-               elementName: 'angular2-element'
-           } as WebComponentWrapperOptions
-       },
+     // And this route too:
+     {
+       path: 'react',
+       component: WebComponentWrapper,
+       data: {
+         remoteEntry: 'https://witty-wave-0a695f710.azurestaticapps.net/remoteEntry.js',
+         remoteName: 'react',
+         exposedModule: './web-components',
+         elementName: 'react-element'
+       } as WebComponentWrapperOptions
+     },
 
-       // And this route too:
-       {
-           path: 'react',
-           component: WebComponentWrapper,
-           data: {
-               remoteEntry: 'https://witty-wave-0a695f710.azurestaticapps.net/remoteEntry.js',
-               remoteName: 'react',
-               exposedModule: './web-components',
-               elementName: 'react-element'
-           } as WebComponentWrapperOptions
-       },
+     // And also this route:
+     {
+       matcher: startsWith('angular3'),
+       component: WebComponentWrapper,
+       data: {
+         remoteEntry: 'https://gray-river-0b8c23a10.azurestaticapps.net/remoteEntry.js',
+         remoteName: 'angular3',
+         exposedModule: './web-components',
+         elementName: 'angular3-element'
+       } as WebComponentWrapperOptions
+     },
 
-       // And also this route:
-       {
-           matcher: startsWith('angular3'),
-           component: WebComponentWrapper,
-           data: {
-               remoteEntry: 'https://gray-river-0b8c23a10.azurestaticapps.net/remoteEntry.js',
-               remoteName: 'angular3',
-               exposedModule: './web-components',
-               elementName: 'angular3-element'
-           } as WebComponentWrapperOptions
-       },
-
-       // This route ALWAYS needs to be the last one:
-       {
-           path: '**',
-           redirectTo: 'home'
-       }
+     // This route ALWAYS needs to be the last one:
+     {
+       path: '**',
+       redirectTo: 'home'
+     }
    ];
    ```
 
@@ -406,13 +398,13 @@ In this section, we load web components via module federation. This allows us, t
    });
    ```
 
-   **Remarks:** This new ``boostrap`` method makes sure we can bootstrap several separately compiled applications in the same browser tab.
+   **Remarks:** This new `boostrap` method makes sure we can bootstrap several separately compiled applications in the same browser tab.
 
 6. Start your application and assure yourself that the web components are loaded. You should also see some other details:
 
-    - MF Angular #2 and #3 should share the same Angular instance. If they share the Angular version with the shell, no additional bundle set with Angular are loaded. Otherwise, only one additional bundle set is loaded and shared across them. You can inspect this using your browser's debug tools (network tab). This is because we combine Web Components with Module Federation.
+   - MF Angular #2 and #3 should share the same Angular instance. If they share the Angular version with the shell, no additional bundle set with Angular are loaded. Otherwise, only one additional bundle set is loaded and shared across them. You can inspect this using your browser's debug tools (network tab). This is because we combine Web Components with Module Federation.
 
-    - MF Angular #3 uses routing and introduces sub routes
+   - MF Angular #3 uses routing and introduces sub routes
 
 ### Inspect the Web-Component-based Micro Frontends
 
@@ -425,7 +417,6 @@ In this part of the lab, we will investigate the loaded micro frontend that has 
 3. The [webpack config](https://github.com/manfredsteyer/angular3-app/blob/main/webpack.config.js) exposes the whole `bootstrap.ts` file. Hence, everyone importing it can use the provided web components.
 
 4. The [webpack config](https://github.com/manfredsteyer/angular3-app/blob/main/webpack.config.js) shares libraries like `@angular/core`.
-
 
 ## Bonus: More Details on Module Federation \*\*
 
